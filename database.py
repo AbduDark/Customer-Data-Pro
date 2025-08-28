@@ -61,20 +61,11 @@ class DatabaseManager:
                     carrier TEXT NOT NULL,
                     phone_number TEXT NOT NULL,
                     has_wallet BOOLEAN DEFAULT FALSE,
-                    notes TEXT DEFAULT '',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (customer_national_id) REFERENCES customers (national_id) ON DELETE CASCADE,
                     UNIQUE(customer_national_id, carrier, phone_number)
                 )
             ''')
-
-            # Add notes column if it doesn't exist (for existing databases)
-            try:
-                cursor.execute('ALTER TABLE phone_numbers ADD COLUMN notes TEXT DEFAULT ""')
-                conn.commit()
-            except sqlite3.OperationalError:
-                # Column already exists
-                pass
 
             # Create indexes for better performance
             cursor.execute('''
@@ -160,15 +151,15 @@ class DatabaseManager:
 
             return customers
 
-    def add_phone_number(self, customer_national_id, carrier, phone_number, has_wallet=False, notes=''):
+    def add_phone_number(self, customer_national_id, carrier, phone_number, has_wallet=False):
         """Add a phone number for a customer"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute('''
-                    INSERT INTO phone_numbers (customer_national_id, carrier, phone_number, has_wallet, notes)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (customer_national_id, carrier, phone_number, has_wallet, notes))
+                    INSERT INTO phone_numbers (customer_national_id, carrier, phone_number, has_wallet)
+                    VALUES (?, ?, ?, ?)
+                ''', (customer_national_id, carrier, phone_number, has_wallet))
                 conn.commit()
                 return True
             except sqlite3.IntegrityError:
@@ -180,7 +171,7 @@ class DatabaseManager:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT id, carrier, phone_number, has_wallet, notes, created_at
+                SELECT id, carrier, phone_number, has_wallet, created_at
                 FROM phone_numbers
                 WHERE customer_national_id = ?
                 ORDER BY carrier, phone_number
@@ -193,8 +184,7 @@ class DatabaseManager:
                     'carrier': row[1],
                     'phone_number': row[2],
                     'has_wallet': bool(row[3]),
-                    'notes': row[4] or '',
-                    'created_at': row[5]
+                    'created_at': row[4]
                 })
 
             return phone_numbers
@@ -208,17 +198,6 @@ class DatabaseManager:
                 SET has_wallet = ?
                 WHERE id = ?
             ''', (has_wallet, phone_id))
-            conn.commit()
-
-    def update_phone_notes(self, phone_id, notes):
-        """Update notes for a phone number"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE phone_numbers 
-                SET notes = ?
-                WHERE id = ?
-            ''', (notes, phone_id))
             conn.commit()
 
     def delete_phone_number(self, phone_id):
@@ -240,7 +219,6 @@ class DatabaseManager:
                     p.carrier,
                     p.phone_number,
                     p.has_wallet,
-                    p.notes as phone_notes,
                     p.id as phone_id
                 FROM customers c
                 LEFT JOIN phone_numbers p ON c.national_id = p.customer_national_id
@@ -271,8 +249,7 @@ class DatabaseManager:
                         customers[national_id]['carriers'][carrier].append({
                             'phone_number': row[4],
                             'has_wallet': bool(row[5]),
-                            'notes': row[6] or '',
-                            'phone_id': row[7]
+                            'phone_id': row[6]
                         })
 
             return list(customers.values())
