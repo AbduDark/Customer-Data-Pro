@@ -311,11 +311,11 @@ class SmartOCRDialog:
         """Select a customer from search results"""
         self.selected_customer = customer
         self.update_customer_selection_display()
-        
+
         # Clear search results
         for widget in self.search_results_frame.winfo_children():
             widget.destroy()
-        
+
         # Clear search box
         self.search_var.set('')
 
@@ -347,7 +347,7 @@ class SmartOCRDialog:
             except AttributeError:
                 # إذا لم يتم إنشاء الأزرار بعد، لا تفعل شيئاً
                 pass
-        
+
         # التأكد من بقاء الأزرار مرئية
         try:
             self.button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=20)
@@ -422,18 +422,18 @@ class SmartOCRDialog:
             try:
                 # Add new customer
                 self.customer_manager.add_customer(national_id, name)
-                
+
                 # Set as selected customer
                 self.selected_customer = {
                     'national_id': national_id,
                     'name': name,
                     'notes': ''
                 }
-                
+
                 self.update_customer_selection_display()
                 messagebox.showinfo("نجح", "تم إضافة العميل الجديد بنجاح")
                 new_customer_dialog.destroy()
-                
+
             except Exception as e:
                 messagebox.showerror("خطأ", f"فشل في إضافة العميل: {str(e)}")
 
@@ -558,32 +558,32 @@ class SmartOCRDialog:
         # Canvas and scrollbar for scrollable content
         self.content_canvas = tk.Canvas(scroll_container, bg='white', highlightthickness=0)
         content_scrollbar = ttk.Scrollbar(scroll_container, orient="vertical", command=self.content_canvas.yview)
-        
+
         # Scrollable frame inside canvas
         self.scrollable_content_frame = tk.Frame(self.content_canvas, bg='white')
-        
+
         self.scrollable_content_frame.bind(
             "<Configure>",
             lambda e: self.content_canvas.configure(scrollregion=self.content_canvas.bbox("all"))
         )
-        
+
         self.content_canvas.create_window((0, 0), window=self.scrollable_content_frame, anchor="nw")
         self.content_canvas.configure(yscrollcommand=content_scrollbar.set)
-        
+
         # Pack canvas and scrollbar
         self.content_canvas.pack(side="left", fill="both", expand=True)
         content_scrollbar.pack(side="right", fill="y")
-        
+
         # Bind mouse wheel
         def _on_mousewheel(event):
             self.content_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        
+
         def _bind_mousewheel(event):
             self.content_canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        
+
         def _unbind_mousewheel(event):
             self.content_canvas.unbind_all("<MouseWheel>")
-        
+
         self.content_canvas.bind('<Enter>', _bind_mousewheel)
         self.content_canvas.bind('<Leave>', _unbind_mousewheel)
 
@@ -823,7 +823,7 @@ class SmartOCRDialog:
         # Calculate dynamic height based on number of phones (max 8 phones visible)
         max_visible_phones = min(8, len(extracted_data))
         dynamic_height = max(200, max_visible_phones * 80)  # At least 200px, 80px per phone
-        
+
         # Scrollable area for phones with dynamic height
         canvas = tk.Canvas(scroll_container, bg='white', height=dynamic_height)
         scrollbar = ttk.Scrollbar(scroll_container, orient="vertical", command=canvas.yview)
@@ -853,11 +853,11 @@ class SmartOCRDialog:
             else:
                 self.save_btn.config(state='disabled')
                 self.add_selected_btn.config(state='disabled')
-            
+
             # التأكد من بقاء الأزرار مرئية
             self.button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
             self.button_frame.lift()
-            
+
             # تحديث منطقة التمرير
             self.update_scroll_region()
         except AttributeError:
@@ -868,7 +868,7 @@ class SmartOCRDialog:
         try:
             self.dialog.update_idletasks()
             self.content_canvas.configure(scrollregion=self.content_canvas.bbox("all"))
-            
+
             # Auto-scroll to show the results
             if hasattr(self, 'results_frame') and self.results_frame.winfo_exists():
                 # Scroll to show the results section
@@ -1317,7 +1317,7 @@ class ModernCustomerDialog:
         if not self.ocr_processor:
             messagebox.showerror("خطأ", "مكتبة OCR غير متوفرة")
             return
-            
+
         try:
             extracted_data = self.ocr_processor.extract_from_clipboard()
 
@@ -1335,7 +1335,7 @@ class ModernCustomerDialog:
         if not self.ocr_processor:
             messagebox.showerror("خطأ", "مكتبة OCR غير متوفرة")
             return
-            
+
         file_path = filedialog.askopenfilename(
             title="اختيار صورة",
             filetypes=[
@@ -1399,46 +1399,47 @@ class ModernCustomerDialog:
         wallet_var = tk.BooleanVar()
         wallet_check = tk.Checkbutton(
             form_frame,
-            text="يحتوي على محفظة",
+            text="💰 يحتوي على محفظة",
             variable=wallet_var,
             font=self.font,
             bg='white'
         )
-        wallet_check.pack(anchor='w', pady=10)
+        wallet_check.pack(anchor='w', pady=15)
+
+        # Notes field
+        tk.Label(form_frame, text="ملاحظات:", font=self.font, bg='white').pack(anchor='w')
+        notes_var = tk.StringVar()
+        notes_entry = tk.Entry(form_frame, textvariable=notes_var, font=self.font, width=30)
+        notes_entry.pack(fill=tk.X, pady=(5, 15))
+
 
         # Buttons
-        btn_frame = tk.Frame(form_frame, bg='white')
-        btn_frame.pack(fill=tk.X, pady=20)
+        buttons_frame = tk.Frame(form_frame, bg='white')
+        buttons_frame.pack(fill=tk.X, pady=20)
 
         def add_phone():
             phone = phone_var.get().strip()
+            carrier = carrier_var.get()
+            has_wallet = wallet_var.get()
+            notes = notes_var.get().strip()
+
             if not phone:
                 messagebox.showerror("خطأ", "يرجى إدخال رقم الهاتف")
                 return
 
-            # Simple validation for Egyptian phone numbers
-            if not phone.isdigit() or len(phone) != 11:
-                messagebox.showerror("خطأ", "رقم الهاتف يجب أن يكون 11 رقم")
-                return
-            
-            # Check Egyptian mobile prefixes
-            valid_prefixes = ['010', '011', '012', '015']
-            if phone[:3] not in valid_prefixes:
-                messagebox.showerror("خطأ", "رقم الهاتف يجب أن يبدأ بـ 010، 011، 012، أو 015")
-                return
-
-            # Add phone
-            phone_data = {
-                'phone_number': phone,
-                'carrier': carrier_var.get(),
-                'has_wallet': wallet_var.get()
-            }
-
-            self.add_extracted_phones([phone_data])
-            manual_dialog.destroy()
+            try:
+                self.add_extracted_phone({
+                    'phone_number': phone,
+                    'carrier': carrier,
+                    'has_wallet': has_wallet,
+                    'notes': notes
+                })
+                manual_dialog.destroy()
+            except Exception as e:
+                messagebox.showerror("خطأ", f"فشل في إضافة الرقم: {str(e)}")
 
         tk.Button(
-            btn_frame,
+            buttons_frame,
             text="إضافة",
             command=add_phone,
             font=self.font,
@@ -1450,7 +1451,7 @@ class ModernCustomerDialog:
         ).pack(side=tk.LEFT, padx=5)
 
         tk.Button(
-            btn_frame,
+            buttons_frame,
             text="إلغاء",
             command=manual_dialog.destroy,
             font=self.font,
@@ -1517,6 +1518,17 @@ class ModernCustomerDialog:
             fg='#2c3e50'
         )
         phone_label.pack(anchor='w')
+
+        # Notes if available
+        if phone_data.get('notes'):
+            notes_label = tk.Label(
+                info_frame,
+                text=f"📝 {phone_data['notes']}",
+                font=(self.font[0], self.font[1]-1),
+                bg='#f8f9fa',
+                fg='#6c757d'
+            )
+            notes_label.pack(anchor='w')
 
         # Wallet status
         if phone_data['has_wallet']:
@@ -1963,6 +1975,17 @@ class PhoneManagementDialog:
         )
         phone_label.pack(anchor='w')
 
+        # Notes display
+        if phone.get('notes'):
+            notes_label = tk.Label(
+                info_frame,
+                text=f"📝 {phone['notes']}",
+                font=(self.font[0], self.font[1]-1),
+                bg='#f8f9fa',
+                fg='#6c757d'
+            )
+            notes_label.pack(anchor='w')
+
         # Wallet status with toggle
         wallet_frame = tk.Frame(info_frame, bg='#f8f9fa')
         wallet_frame.pack(anchor='w', pady=(5, 0))
@@ -2079,7 +2102,7 @@ class PhoneManagementDialog:
         carrier_combo = ttk.Combobox(
             form_frame,
             textvariable=carrier_var,
-            values=['اورانج', 'فودafون', 'اتصالات', 'وي'],
+            values=['اورانج', 'فودافون', 'اتصالات', 'وي'],
             state='readonly',
             font=self.font
         )
@@ -2089,12 +2112,18 @@ class PhoneManagementDialog:
         wallet_var = tk.BooleanVar()
         wallet_check = tk.Checkbutton(
             form_frame,
-            text="يحتوي على محفظة",
+            text="💰 يحتوي على محفظة",
             variable=wallet_var,
             font=self.font,
             bg='white'
         )
-        wallet_check.pack(anchor='w', pady=10)
+        wallet_check.pack(anchor='w', pady=15)
+
+        # Notes field
+        tk.Label(form_frame, text="ملاحظات:", font=self.font, bg='white').pack(anchor='w')
+        notes_var = tk.StringVar()
+        notes_entry = tk.Entry(form_frame, textvariable=notes_var, font=self.font, width=30)
+        notes_entry.pack(fill=tk.X, pady=(5, 15))
 
         # Buttons
         btn_frame = tk.Frame(form_frame, bg='white')
@@ -2102,6 +2131,10 @@ class PhoneManagementDialog:
 
         def add_phone():
             phone = phone_var.get().strip()
+            carrier = carrier_var.get()
+            has_wallet = wallet_var.get()
+            notes = notes_var.get().strip()
+
             if not phone:
                 messagebox.showerror("خطأ", "يرجى إدخال رقم الهاتف")
                 return
@@ -2113,9 +2146,10 @@ class PhoneManagementDialog:
             try:
                 self.customer_manager.add_phone_number(
                     self.customer['national_id'],
-                    carrier_var.get(),
+                    carrier,
                     phone,
-                    wallet_var.get()
+                    has_wallet,
+                    notes
                 )
                 messagebox.showinfo("نجح", "تم إضافة الرقم بنجاح")
                 manual_dialog.destroy()
@@ -2187,7 +2221,8 @@ class PhoneManagementDialog:
                     self.customer['national_id'],
                     phone_data['carrier'],
                     phone_data['phone_number'],
-                    phone_data['has_wallet']
+                    phone_data['has_wallet'],
+                    phone_data.get('notes', '') # Add notes here
                 )
                 success_count += 1
             except Exception as e:
