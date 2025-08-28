@@ -261,6 +261,9 @@ class CustomerTableGUI:
             row_frame = tk.Frame(customer_frame, bg='white')
             row_frame.pack(fill=tk.X, pady=1)
             
+            # حفظ فهرس العميل في الصف للتمييز
+            row_frame.customer_index = customer_index
+            
             # Configure grid columns
             for i in range(7):
                 row_frame.grid_columnconfigure(i, weight=1, minsize=150)
@@ -417,6 +420,9 @@ class CustomerTableGUI:
         def on_click(event):
             self.selected_customer = customer
             self.highlight_selected_row(row_frame)
+            # إشعار التطبيق الرئيسي بالتحديد
+            if hasattr(self, 'selection_callback') and self.selection_callback:
+                self.selection_callback(customer)
         
         row_frame.bind("<Button-1>", on_click)
         for child in row_frame.winfo_children():
@@ -429,8 +435,51 @@ class CustomerTableGUI:
     
     def highlight_selected_row(self, selected_frame):
         """Highlight the selected row"""
-        # Simple selection tracking - the row click is enough for now
-        pass
+        # إزالة التمييز من جميع الصفوف
+        self.clear_all_highlights()
+        
+        # تمييز الصف المحدد
+        self.highlight_row_recursive(selected_frame, self.colors['selected'])
+        
+        # حفظ مرجع للصف المحدد
+        self.selected_row_frame = selected_frame
+    
+    def clear_all_highlights(self):
+        """Clear highlights from all rows"""
+        if hasattr(self, 'selected_row_frame') and self.selected_row_frame:
+            try:
+                # إعادة تعيين لون الصف السابق
+                customer_index = getattr(self.selected_row_frame, 'customer_index', 0)
+                original_bg = self.colors['white_row'] if customer_index % 2 == 0 else self.colors['alt_row']
+                self.highlight_row_recursive(self.selected_row_frame, original_bg)
+            except:
+                pass
+    
+    def highlight_row_recursive(self, widget, color):
+        """Recursively highlight a row and its children"""
+        try:
+            # تغيير لون الخلفية للعنصر نفسه إذا كان يدعم ذلك
+            if hasattr(widget, 'configure') and 'bg' in widget.keys():
+                widget.configure(bg=color)
+            
+            # تطبيق التمييز على العناصر الفرعية
+            for child in widget.winfo_children():
+                if hasattr(child, 'configure') and 'bg' in child.keys():
+                    # تجنب تغيير ألوان خلايا الشبكات المميزة
+                    current_bg = child.cget('bg')
+                    if current_bg not in [self.colors['orange_bg'], self.colors['vodafone_bg'], 
+                                        self.colors['etisalat_bg'], self.colors['we_bg'], 
+                                        self.colors['header_bg']]:
+                        child.configure(bg=color)
+                
+                # استمرار التمييز للعناصر الفرعية
+                self.highlight_row_recursive(child, color)
+        except:
+            pass
+    
+    def set_selection_callback(self, callback):
+        """Set callback function for selection events"""
+        self.selection_callback = callback
     
     def on_wallet_change(self, phone_id, has_wallet):
         """Handle wallet status change"""

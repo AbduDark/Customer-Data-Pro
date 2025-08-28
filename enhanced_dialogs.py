@@ -2239,6 +2239,398 @@ class PhoneManagementDialog:
                 error_msg += f"\n... و {len(errors) - 3} أخطاء أخرى"
             messagebox.showerror("أخطاء", f"فشل في إضافة الأرقام التالية:\n{error_msg}")
 
+class CustomerDetailsDialog:
+    """نافذة عرض تفاصيل العميل الكاملة"""
+    def __init__(self, parent, customer, customer_manager, font, edit_callback=None, delete_callback=None):
+        self.customer = customer
+        self.customer_manager = customer_manager
+        self.font = font
+        self.edit_callback = edit_callback
+        self.delete_callback = delete_callback
+
+        # Create dialog
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title(f"تفاصيل العميل: {customer['name']}")
+        self.dialog.geometry("900x700")
+        self.dialog.resizable(True, True)
+        self.dialog.configure(bg='white')
+        self.dialog.grab_set()
+        self.dialog.transient(parent)
+
+        # Center dialog
+        self.center_dialog(parent)
+        
+        # Setup UI
+        self.setup_ui()
+        
+        # Load customer data
+        self.load_customer_details()
+
+    def center_dialog(self, parent):
+        """Center dialog on parent"""
+        self.dialog.update_idletasks()
+        x = (self.dialog.winfo_screenwidth() // 2) - 450
+        y = (self.dialog.winfo_screenheight() // 2) - 350
+        self.dialog.geometry(f'+{x}+{y}')
+
+    def setup_ui(self):
+        """Setup user interface"""
+        # Header
+        header_frame = tk.Frame(self.dialog, bg='#4F81BD', height=80)
+        header_frame.pack(fill=tk.X, pady=(0, 20))
+        header_frame.pack_propagate(False)
+
+        header_label = tk.Label(
+            header_frame,
+            text=f"🧑‍💼 تفاصيل العميل: {self.customer['name']}",
+            font=(self.font[0], self.font[1]+4, 'bold'),
+            bg='#4F81BD',
+            fg='white',
+            pady=25
+        )
+        header_label.pack()
+
+        # Main content container
+        main_frame = tk.Frame(self.dialog, bg='white')
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
+
+        # Customer info section
+        self.setup_customer_info_section(main_frame)
+
+        # Phone numbers section
+        self.setup_phones_section(main_frame)
+
+        # Action buttons
+        self.setup_action_buttons(main_frame)
+
+    def setup_customer_info_section(self, parent):
+        """Setup customer information display"""
+        info_frame = tk.LabelFrame(
+            parent,
+            text="📋 معلومات العميل الأساسية",
+            font=(self.font[0], self.font[1]+1, 'bold'),
+            bg='white',
+            fg='#2c3e50',
+            bd=2,
+            relief=tk.GROOVE
+        )
+        info_frame.pack(fill=tk.X, pady=10, padx=5)
+
+        # Info grid
+        info_container = tk.Frame(info_frame, bg='white')
+        info_container.pack(fill=tk.X, padx=20, pady=15)
+
+        # National ID
+        tk.Label(
+            info_container,
+            text="الرقم القومي:",
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='white',
+            fg='#2c3e50'
+        ).grid(row=0, column=0, sticky='e', padx=(0, 10), pady=5)
+
+        tk.Label(
+            info_container,
+            text=self.customer['national_id'],
+            font=self.font,
+            bg='#f8f9fa',
+            fg='#495057',
+            relief=tk.GROOVE,
+            bd=1,
+            padx=10,
+            pady=5
+        ).grid(row=0, column=1, sticky='w', pady=5)
+
+        # Name
+        tk.Label(
+            info_container,
+            text="اسم العميل:",
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='white',
+            fg='#2c3e50'
+        ).grid(row=1, column=0, sticky='e', padx=(0, 10), pady=5)
+
+        tk.Label(
+            info_container,
+            text=self.customer['name'],
+            font=self.font,
+            bg='#f8f9fa',
+            fg='#495057',
+            relief=tk.GROOVE,
+            bd=1,
+            padx=10,
+            pady=5
+        ).grid(row=1, column=1, sticky='w', pady=5)
+
+        # Notes
+        tk.Label(
+            info_container,
+            text="ملاحظات:",
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='white',
+            fg='#2c3e50'
+        ).grid(row=2, column=0, sticky='ne', padx=(0, 10), pady=5)
+
+        notes_text = self.customer.get('notes', 'لا توجد ملاحظات')
+        notes_label = tk.Label(
+            info_container,
+            text=notes_text if notes_text else 'لا توجد ملاحظات',
+            font=self.font,
+            bg='#f8f9fa',
+            fg='#495057',
+            relief=tk.GROOVE,
+            bd=1,
+            padx=10,
+            pady=5,
+            wraplength=300,
+            justify='right'
+        )
+        notes_label.grid(row=2, column=1, sticky='w', pady=5)
+
+    def setup_phones_section(self, parent):
+        """Setup phone numbers display section"""
+        self.phones_frame = tk.LabelFrame(
+            parent,
+            text="📱 أرقام الهواتف",
+            font=(self.font[0], self.font[1]+1, 'bold'),
+            bg='white',
+            fg='#2c3e50',
+            bd=2,
+            relief=tk.GROOVE
+        )
+        self.phones_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=5)
+
+    def setup_action_buttons(self, parent):
+        """Setup action buttons"""
+        button_frame = tk.Frame(parent, bg='white')
+        button_frame.pack(fill=tk.X, pady=20)
+
+        # Edit button
+        if self.edit_callback:
+            tk.Button(
+                button_frame,
+                text="✏️ تعديل العميل",
+                command=self.edit_customer,
+                font=(self.font[0], self.font[1], 'bold'),
+                bg='#007bff',
+                fg='white',
+                bd=0,
+                padx=30,
+                pady=12,
+                cursor='hand2'
+            ).pack(side=tk.LEFT, padx=10)
+
+        # Delete button
+        if self.delete_callback:
+            tk.Button(
+                button_frame,
+                text="🗑️ حذف العميل",
+                command=self.delete_customer,
+                font=(self.font[0], self.font[1], 'bold'),
+                bg='#dc3545',
+                fg='white',
+                bd=0,
+                padx=30,
+                pady=12,
+                cursor='hand2'
+            ).pack(side=tk.LEFT, padx=10)
+
+        # Close button
+        tk.Button(
+            button_frame,
+            text="❌ إغلاق",
+            command=self.dialog.destroy,
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='#6c757d',
+            fg='white',
+            bd=0,
+            padx=30,
+            pady=12,
+            cursor='hand2'
+        ).pack(side=tk.RIGHT, padx=10)
+
+    def load_customer_details(self):
+        """Load and display customer phone numbers"""
+        try:
+            phones = self.customer_manager.get_customer_phone_numbers(self.customer['national_id'])
+            self.display_phone_numbers(phones)
+        except Exception as e:
+            messagebox.showerror("خطأ", f"فشل في تحميل أرقام العميل: {str(e)}")
+
+    def display_phone_numbers(self, phones):
+        """Display phone numbers by carrier"""
+        # Clear existing content
+        for widget in self.phones_frame.winfo_children():
+            widget.destroy()
+
+        if not phones:
+            # Show empty state
+            empty_label = tk.Label(
+                self.phones_frame,
+                text="📱 لا توجد أرقام هواتف مسجلة لهذا العميل",
+                font=self.font,
+                bg='white',
+                fg='#6c757d',
+                justify=tk.CENTER
+            )
+            empty_label.pack(expand=True, pady=50)
+            return
+
+        # Create scrollable area
+        canvas = tk.Canvas(self.phones_frame, bg='white')
+        scrollbar = ttk.Scrollbar(self.phones_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='white')
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Carrier colors
+        carrier_colors = {
+            'اورانج': '#FFC000',
+            'فودافون': '#FF0000',
+            'اتصالات': '#00B050',
+            'وي': '#7030A0'
+        }
+
+        # Display phones by carrier
+        carriers = ['اورانج', 'فودافون', 'اتصالات', 'وي']
+        for carrier in carriers:
+            carrier_phones = [p for p in phones if p['carrier'] == carrier]
+            if carrier_phones:
+                self.create_carrier_section_details(
+                    scrollable_frame, 
+                    carrier, 
+                    carrier_phones, 
+                    carrier_colors[carrier]
+                )
+
+        # Statistics
+        stats_frame = tk.Frame(scrollable_frame, bg='#f8f9fa', relief=tk.RAISED, bd=1)
+        stats_frame.pack(fill=tk.X, padx=15, pady=10)
+
+        tk.Label(
+            stats_frame,
+            text=f"📊 إجمالي الأرقام: {len(phones)} | أرقام بمحفظة: {sum(1 for p in phones if p['has_wallet'])}",
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='#f8f9fa',
+            fg='#2c3e50',
+            pady=10
+        ).pack()
+
+        canvas.pack(side="left", fill="both", expand=True, padx=15, pady=15)
+        scrollbar.pack(side="right", fill="y", padx=(0, 15), pady=15)
+
+    def create_carrier_section_details(self, parent, carrier, phones, color):
+        """Create detailed carrier section"""
+        # Carrier header
+        carrier_frame = tk.Frame(parent, bg=color, height=40)
+        carrier_frame.pack(fill=tk.X, padx=10, pady=(10, 0))
+        carrier_frame.pack_propagate(False)
+
+        carrier_label = tk.Label(
+            carrier_frame,
+            text=f"📱 {carrier} ({len(phones)} أرقام)",
+            font=(self.font[0], self.font[1]+1, 'bold'),
+            bg=color,
+            fg='white' if carrier != 'اورانج' else 'black',
+            pady=10
+        )
+        carrier_label.pack()
+
+        # Phone numbers
+        for phone in phones:
+            self.create_phone_item_details(parent, phone, color)
+
+    def create_phone_item_details(self, parent, phone, carrier_color):
+        """Create detailed phone item"""
+        item_frame = tk.Frame(parent, bg='#f8f9fa', relief=tk.RAISED, bd=1)
+        item_frame.pack(fill=tk.X, padx=10, pady=2)
+
+        # Phone info container
+        info_container = tk.Frame(item_frame, bg='#f8f9fa')
+        info_container.pack(fill=tk.X, padx=15, pady=10)
+
+        # Phone number
+        phone_frame = tk.Frame(info_container, bg='#f8f9fa')
+        phone_frame.pack(fill=tk.X, pady=2)
+
+        tk.Label(
+            phone_frame,
+            text="📞 الرقم:",
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='#f8f9fa',
+            fg='#2c3e50'
+        ).pack(side=tk.RIGHT, padx=(10, 0))
+
+        tk.Label(
+            phone_frame,
+            text=phone['phone_number'],
+            font=self.font,
+            bg='#f8f9fa',
+            fg='#495057'
+        ).pack(side=tk.RIGHT, padx=(0, 10))
+
+        # Wallet status
+        wallet_frame = tk.Frame(info_container, bg='#f8f9fa')
+        wallet_frame.pack(fill=tk.X, pady=2)
+
+        tk.Label(
+            wallet_frame,
+            text="💰 المحفظة:",
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='#f8f9fa',
+            fg='#2c3e50'
+        ).pack(side=tk.RIGHT, padx=(10, 0))
+
+        wallet_status = "نعم ✅" if phone['has_wallet'] else "لا ❌"
+        tk.Label(
+            wallet_frame,
+            text=wallet_status,
+            font=self.font,
+            bg='#f8f9fa',
+            fg='#28a745' if phone['has_wallet'] else '#dc3545'
+        ).pack(side=tk.RIGHT, padx=(0, 10))
+
+        # Notes if available
+        if phone.get('notes'):
+            notes_frame = tk.Frame(info_container, bg='#f8f9fa')
+            notes_frame.pack(fill=tk.X, pady=2)
+
+            tk.Label(
+                notes_frame,
+                text="📝 ملاحظات:",
+                font=(self.font[0], self.font[1], 'bold'),
+                bg='#f8f9fa',
+                fg='#2c3e50'
+            ).pack(anchor='e', padx=(10, 0))
+
+            tk.Label(
+                notes_frame,
+                text=phone['notes'],
+                font=(self.font[0], self.font[1]-1),
+                bg='#f8f9fa',
+                fg='#6c757d',
+                wraplength=400,
+                justify='right'
+            ).pack(anchor='e', padx=(0, 10))
+
+    def edit_customer(self):
+        """Edit customer via callback"""
+        if self.edit_callback:
+            self.dialog.destroy()
+            self.edit_callback()
+
+    def delete_customer(self):
+        """Delete customer via callback"""
+        if self.delete_callback:
+            self.dialog.destroy()
+            self.delete_callback()
+
 # Legacy compatibility classes
 class EnhancedOCRDialog(SmartOCRDialog):
     """Legacy compatibility"""

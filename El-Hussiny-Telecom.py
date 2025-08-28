@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -30,24 +29,24 @@ class EnhancedOCRProcessor:
         """Extract phone numbers from clipboard image"""
         if not self.available:
             return []
-        
+
         try:
             from PIL import ImageGrab
             import pytesseract
-            
+
             # Get image from clipboard
             image = ImageGrab.grabclipboard()
             if not image:
                 return []
-            
+
             # Extract text
             text = pytesseract.image_to_string(image, lang='ara+eng')
-            
+
             # Extract phone numbers
             phone_pattern = r'\b(010|011|012|015)\d{8}\b'
             import re
             phones = re.findall(phone_pattern, text)
-            
+
             result = []
             for phone in phones:
                 carrier = self.determine_carrier_from_number(phone)
@@ -56,7 +55,7 @@ class EnhancedOCRProcessor:
                     'carrier': carrier,
                     'has_wallet': False
                 })
-            
+
             return result
         except Exception as e:
             print(f"OCR Error: {e}")
@@ -66,19 +65,19 @@ class EnhancedOCRProcessor:
         """Extract phone numbers from image file"""
         if not self.available:
             return []
-            
+
         try:
             from PIL import Image
             import pytesseract
-            
+
             image = Image.open(file_path)
             text = pytesseract.image_to_string(image, lang='ara+eng')
-            
+
             # Extract phone numbers
             phone_pattern = r'\b(010|011|012|015)\d{8}\b'
             import re
             phones = re.findall(phone_pattern, text)
-            
+
             result = []
             for phone in phones:
                 carrier = self.determine_carrier_from_number(phone)
@@ -87,7 +86,7 @@ class EnhancedOCRProcessor:
                     'carrier': carrier,
                     'has_wallet': False
                 })
-            
+
             return result
         except Exception as e:
             print(f"OCR Error: {e}")
@@ -97,9 +96,9 @@ class EnhancedOCRProcessor:
         """Determine carrier from phone number"""
         if not phone_number or len(phone_number) != 11:
             return 'اورانج'  # Default
-        
+
         prefix = phone_number[:3]
-        
+
         if prefix == '010':
             return 'اورانج'
         elif prefix == '011':
@@ -108,7 +107,7 @@ class EnhancedOCRProcessor:
             return 'اتصالات'
         elif prefix == '015':
             return 'وي'
-        
+
         return 'اورانج'  # Default
 
 class ProfessionalMainApplication:
@@ -283,7 +282,8 @@ class ProfessionalMainApplication:
         # Action buttons with icons
         actions = [
             ("👤 إضافة عميل جديد", self.add_customer, self.colors['success'], "إضافة عميل جديد إلى النظام"),
-            ("✏️ إدارة العملاء", self.edit_customer, self.colors['info'], "تعديل بيانات وأرقام العملاء"),
+            ("👁️ عرض التفاصيل", self.view_customer_details, self.colors['accent'], "عرض تفاصيل العميل المحدد"),
+            ("✏️ تعديل العميل", self.edit_customer, self.colors['info'], "تعديل بيانات وأرقام العملاء"),
             ("🗑️ حذف عميل", self.delete_customer, self.colors['warning'], "حذف عميل من النظام"),
             ("📷 استخراج من صورة", self.extract_from_image, self.colors['secondary'], "استخراج أرقام من الصور"),
             ("🔄 تحديث البيانات", self.refresh_data, self.colors['muted'], "إعادة تحميل البيانات")
@@ -293,6 +293,11 @@ class ProfessionalMainApplication:
             btn_frame = tk.Frame(toolbar_content, bg='white')
             btn_frame.pack(side=tk.LEFT, padx=10)
 
+            # Determine if button should be initially disabled
+            initial_state = 'disabled'
+            if text == "👤 إضافة عميل جديد" or text == "📷 استخراج من صورة" or text == "🔄 تحديث البيانات":
+                initial_state = 'normal'
+            
             btn = tk.Button(
                 btn_frame,
                 text=text,
@@ -306,7 +311,8 @@ class ProfessionalMainApplication:
                 cursor='hand2',
                 relief=tk.FLAT,
                 activebackground=self.darken_color(color),
-                activeforeground='white'
+                activeforeground='white',
+                state=initial_state # Set initial state
             )
             btn.pack()
 
@@ -448,6 +454,9 @@ class ProfessionalMainApplication:
         self.table_gui = CustomerTableGUI(table_container, self.fonts['body'], self.customer_manager)
         self.table_gui.frame.pack(fill=tk.BOTH, expand=True)
 
+        # تعيين callback للتحديد
+        self.table_gui.set_selection_callback(self.on_customer_selected)
+
     def create_status_bar(self, parent):
         """Create professional status bar"""
         status_frame = tk.Frame(parent, bg=self.colors['primary'], height=40)
@@ -478,6 +487,10 @@ class ProfessionalMainApplication:
             fg='#b8d4e3'
         )
         version_label.pack(side=tk.RIGHT)
+
+        # Store status bar for direct access
+        self.status_bar = status_label
+
 
     def center_window(self):
         """Center window on screen"""
@@ -695,14 +708,14 @@ class ProfessionalMainApplication:
                 ]
 
                 self.table_gui.update_data(filtered_customers)
-                self.status_var.set(f"تم العثور على {len(customers)} عميل مطابق للبحث: '{search_term}'")
+                self.status_bar.set_status(f"تم العثور على {len(customers)} عميل مطابق للبحث: '{search_term}'")
             else:
                 self.table_gui.update_data([])
-                self.status_var.set(f"لم يتم العثور على أي عملاء مطابقين للبحث: '{search_term}'")
+                self.status_bar.set_status(f"لم يتم العثور على أي عملاء مطابقين للبحث: '{search_term}'")
 
         except Exception as e:
             self.show_error_notification(f"فشل في البحث: {str(e)}")
-            self.status_var.set("خطأ في البحث")
+            self.status_bar.set_status("خطأ في البحث")
 
     def refresh_data(self):
         """Refresh the customer data display"""
@@ -719,7 +732,7 @@ class ProfessionalMainApplication:
 
         except Exception as e:
             self.show_error_notification(f"فشل في تحديث البيانات: {str(e)}")
-            self.status_var.set("خطأ في تحديث البيانات")
+            self.status_bar.set_status("خطأ في تحديث البيانات")
 
     def show_success_notification(self, message):
         """Show success notification"""
@@ -816,6 +829,51 @@ class ProfessionalMainApplication:
         # Auto-close for success notifications
         if title == "نجح":
             self.root.after(2500, notification.destroy)
+
+    def on_customer_selected(self, customer):
+        """Called when a customer is selected"""
+        if customer:
+            # تفعيل الأزرار عند تحديد عميل
+            self.view_details_btn.config(state='normal')
+            self.edit_btn.config(state='normal')
+            self.delete_btn.config(state='normal')
+
+            # تحديث شريط الحالة
+            self.status_bar.set_status(f"تم تحديد العميل: {customer['name']}")
+        else:
+            # تعطيل الأزرار عند عدم التحديد
+            self.view_details_btn.config(state='disabled')
+            self.edit_btn.config(state='disabled')
+            self.delete_btn.config(state='disabled')
+
+            self.status_bar.set_status("جاهز")
+
+    def view_customer_details(self):
+        """View detailed customer information"""
+        selected = self.table_gui.get_selected_customer()
+        if not selected:
+            self.show_warning_notification("يرجى اختيار عميل لعرض التفاصيل")
+            return
+
+        # إنشاء نافذة تفاصيل العميل
+        details_dialog = CustomerDetailsDialog(
+            self.root,
+            selected,
+            self.customer_manager,
+            self.fonts['body'],
+            edit_callback=self.edit_customer,
+            delete_callback=self.delete_customer
+        )
+
+        self.root.wait_window(details_dialog.dialog)
+        self.refresh_data()
+
+    def open_smart_ocr(self):
+        """Open smart OCR dialog"""
+        dialog = SmartOCRDialog(self.root, self.fonts['body'], self.customer_manager)
+        self.root.wait_window(dialog.dialog)
+        self.refresh_data()
+
 
     def run(self):
         """Start the application"""
