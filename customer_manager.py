@@ -74,7 +74,7 @@ class CustomerManager:
         """Get all customers with their phone numbers"""
         return self.db.get_all_customers_with_phones()
     
-    def add_phone_number(self, customer_national_id, carrier, phone_number, has_wallet=False):
+    def add_phone_number(self, customer_national_id, carrier, phone_number, has_wallet=False, notes=''):
         """Add a phone number for a customer with validation"""
         # Validate customer exists
         customer = self.db.get_customer(customer_national_id)
@@ -90,7 +90,7 @@ class CustomerManager:
         #     raise ValueError(f"رقم الهاتف غير صحيح لشبكة {carrier}")
         
         # Add phone number
-        success = self.db.add_phone_number(customer_national_id, carrier, phone_number, has_wallet)
+        success = self.db.add_phone_number(customer_national_id, carrier, phone_number, has_wallet, notes)
         if not success:
             raise ValueError("رقم الهاتف موجود بالفعل لهذا العميل")
     
@@ -139,6 +139,10 @@ class CustomerManager:
     def update_phone_wallet_status(self, phone_id, has_wallet):
         """Update wallet status for a phone number"""
         self.db.update_phone_number_wallet_status(phone_id, has_wallet)
+    
+    def update_phone_notes(self, phone_id, notes):
+        """Update notes for a phone number"""
+        self.db.update_phone_notes(phone_id, notes)
     
     def delete_phone_number(self, phone_id):
         """Delete a phone number"""
@@ -216,7 +220,8 @@ class CustomerManager:
                     customer_national_id,
                     phone_data['carrier'],
                     phone_data['phone_number'],
-                    phone_data.get('has_wallet', False)
+                    phone_data.get('has_wallet', False),
+                    phone_data.get('notes', '')
                 )
                 results['success'].append(phone_data)
             except Exception as e:
