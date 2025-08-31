@@ -12,7 +12,7 @@ import sys
 from database import DatabaseManager
 from customer_manager import CustomerManager
 from gui_components import CustomerTableGUI
-from enhanced_dialogs import ModernCustomerDialog, PhoneManagementDialog, SmartOCRDialog
+from enhanced_dialogs import ModernCustomerDialog, PhoneManagementDialog, SmartOCRDialog, CustomerDetailsDialog
 
 class EnhancedOCRProcessor:
     """Basic OCR processor fallback if external module fails"""
@@ -281,23 +281,23 @@ class ProfessionalMainApplication:
 
         # Action buttons with icons
         actions = [
-            ("👤 إضافة عميل جديد", self.add_customer, self.colors['success'], "إضافة عميل جديد إلى النظام"),
-            ("👁️ عرض التفاصيل", self.view_customer_details, self.colors['accent'], "عرض تفاصيل العميل المحدد"),
-            ("✏️ تعديل العميل", self.edit_customer, self.colors['info'], "تعديل بيانات وأرقام العملاء"),
-            ("🗑️ حذف عميل", self.delete_customer, self.colors['warning'], "حذف عميل من النظام"),
-            ("📷 استخراج من صورة", self.extract_from_image, self.colors['secondary'], "استخراج أرقام من الصور"),
-            ("🔄 تحديث البيانات", self.refresh_data, self.colors['muted'], "إعادة تحميل البيانات")
+            ("👤 إضافة عميل جديد", self.add_customer, self.colors['success'], "إضافة عميل جديد إلى النظام", None),
+            ("📋 عرض جميع العملاء", self.view_all_customers, self.colors['primary'], "عرض جميع العملاء في نافذة كبيرة", None),
+            ("👁️ عرض التفاصيل", self.view_customer_details, self.colors['accent'], "عرض تفاصيل العميل المحدد", 'view_details_btn'),
+            ("✏️ تعديل العميل", self.edit_customer, self.colors['info'], "تعديل بيانات وأرقام العملاء", 'edit_btn'),
+            ("🗑️ حذف عميل", self.delete_customer, self.colors['warning'], "حذف عميل من النظام", 'delete_btn'),
+            ("📷 استخراج من صورة", self.extract_from_image, self.colors['secondary'], "استخراج أرقام من الصور", None),
+            ("🔄 تحديث البيانات", self.refresh_data, self.colors['muted'], "إعادة تحميل البيانات", None)
         ]
 
-        for text, command, color, tooltip in actions:
+        for text, command, color, tooltip, btn_var in actions:
             btn_frame = tk.Frame(toolbar_content, bg='white')
             btn_frame.pack(side=tk.LEFT, padx=10)
 
             # Determine if button should be initially disabled
-            initial_state = 'disabled'
-            if text == "👤 إضافة عميل جديد" or text == "📷 استخراج من صورة" or text == "🔄 تحديث البيانات":
+            if text in ["👤 إضافة عميل جديد", "📋 عرض جميع العملاء", "📷 استخراج من صورة", "🔄 تحديث البيانات"]:
                 initial_state = 'normal'
-            
+
             btn = tk.Button(
                 btn_frame,
                 text=text,
@@ -315,6 +315,10 @@ class ProfessionalMainApplication:
                 state=initial_state # Set initial state
             )
             btn.pack()
+
+            # حفظ مرجع للأزرار التي تحتاج تفعيل/تعطيل
+            if btn_var:
+                setattr(self, btn_var, btn)
 
             # Tooltip label
             tooltip_label = tk.Label(
@@ -834,19 +838,36 @@ class ProfessionalMainApplication:
         """Called when a customer is selected"""
         if customer:
             # تفعيل الأزرار عند تحديد عميل
-            self.view_details_btn.config(state='normal')
-            self.edit_btn.config(state='normal')
-            self.delete_btn.config(state='normal')
+            if hasattr(self, 'view_details_btn'):
+                self.view_details_btn.config(state='normal')
+            if hasattr(self, 'edit_btn'):
+                self.edit_btn.config(state='normal')
+            if hasattr(self, 'delete_btn'):
+                self.delete_btn.config(state='normal')
 
             # تحديث شريط الحالة
-            self.status_bar.set_status(f"تم تحديد العميل: {customer['name']}")
+            self.status_var.set(f"تم تحديد العميل: {customer['name']}")
         else:
             # تعطيل الأزرار عند عدم التحديد
-            self.view_details_btn.config(state='disabled')
-            self.edit_btn.config(state='disabled')
-            self.delete_btn.config(state='disabled')
+            if hasattr(self, 'view_details_btn'):
+                self.view_details_btn.config(state='disabled')
+            if hasattr(self, 'edit_btn'):
+                self.edit_btn.config(state='disabled')
+            if hasattr(self, 'delete_btn'):
+                self.delete_btn.config(state='disabled')
 
-            self.status_bar.set_status("جاهز")
+            self.status_var.set("جاهز للعمل")
+
+    def view_all_customers(self):
+        """View all customers in large screen"""
+        try:
+            from enhanced_dialogs import AllCustomersViewDialog
+            dialog = AllCustomersViewDialog(self.root, self.customer_manager, self.fonts['body'])
+            self.root.wait_window(dialog.dialog)
+        except Exception as e:
+            self.show_error_notification(f"فشل في فتح نافذة عرض العملاء: {str(e)}")
+            print(f"Error in view_all_customers: {e}")  # للتشخيص
+        self.refresh_data()
 
     def view_customer_details(self):
         """View detailed customer information"""
@@ -861,8 +882,8 @@ class ProfessionalMainApplication:
             selected,
             self.customer_manager,
             self.fonts['body'],
-            edit_callback=self.edit_customer,
-            delete_callback=self.delete_customer
+            edit_callback=self.refresh_data,
+            delete_callback=self.refresh_data
         )
 
         self.root.wait_window(details_dialog.dialog)

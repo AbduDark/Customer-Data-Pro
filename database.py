@@ -203,22 +203,16 @@ class DatabaseManager:
         """Update wallet status for a phone number"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE phone_numbers 
-                SET has_wallet = ?
-                WHERE id = ?
-            ''', (has_wallet, phone_id))
+            cursor.execute('UPDATE phone_numbers SET has_wallet = ? WHERE id = ?', 
+                         (has_wallet, phone_id))
             conn.commit()
 
     def update_phone_notes(self, phone_id, notes):
         """Update notes for a phone number"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE phone_numbers 
-                SET notes = ?
-                WHERE id = ?
-            ''', (notes, phone_id))
+            cursor.execute('UPDATE phone_numbers SET notes = ? WHERE id = ?', 
+                         (notes, phone_id))
             conn.commit()
 
     def delete_phone_number(self, phone_id):
@@ -281,7 +275,7 @@ class DatabaseManager:
         """Search customers by name, national ID, notes, or phone numbers"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
+
             # Search in customers table (name, national_id, notes) and phone numbers
             cursor.execute('''
                 SELECT DISTINCT c.national_id, c.name, c.notes, c.created_at, c.updated_at

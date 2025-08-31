@@ -1936,7 +1936,7 @@ class PhoneManagementDialog:
         scrollbar.pack(side="right", fill="y", padx=(0, 15), pady=15)
 
     def create_carrier_section(self, parent, carrier, phones, color):
-        """Create section for carrier phones"""
+        """Create section for carrier phones with horizontal layout"""
         # Carrier header
         carrier_frame = tk.Frame(parent, bg=color, height=40)
         carrier_frame.pack(fill=tk.X, padx=10, pady=(10, 0))
@@ -1952,48 +1952,90 @@ class PhoneManagementDialog:
         )
         carrier_label.pack()
 
-        # Phone numbers
-        for phone in phones:
-            self.create_phone_item(parent, phone, color)
+        # Container for phone numbers in horizontal layout
+        phones_container = tk.Frame(parent, bg='white')
+        phones_container.pack(fill=tk.X, padx=10, pady=(0, 10))
 
-    def create_phone_item(self, parent, phone, carrier_color):
-        """Create phone number item"""
-        item_frame = tk.Frame(parent, bg='#f8f9fa', relief=tk.RAISED, bd=1)
-        item_frame.pack(fill=tk.X, padx=10, pady=2)
+        # Split phones into rows (2 phones per row)
+        phones_per_row = 2
+        for i in range(0, len(phones), phones_per_row):
+            row_frame = tk.Frame(phones_container, bg='white')
+            row_frame.pack(fill=tk.X, pady=2)
 
-        # Phone info
-        info_frame = tk.Frame(item_frame, bg='#f8f9fa')
-        info_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=15, pady=10)
+            # Add phones to this row
+            row_phones = phones[i:i + phones_per_row]
+            for j, phone in enumerate(row_phones):
+                phone_frame = tk.Frame(row_frame, bg='#f8f9fa', relief=tk.RAISED, bd=1)
+                phone_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5 if j < len(row_phones)-1 else 0))
+                self.create_phone_item_horizontal(phone_frame, phone, color)
 
-        # Phone number
-        phone_label = tk.Label(
-            info_frame,
+    def create_phone_item_horizontal(self, parent, phone, carrier_color):
+        """Create phone number item in horizontal layout"""
+        # Phone info container
+        info_container = tk.Frame(parent, bg='#f8f9fa')
+        info_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=5)
+
+        # Top row: Phone number
+        top_row = tk.Frame(info_container, bg='#f8f9fa')
+        top_row.pack(fill=tk.X, pady=(0, 3))
+
+        tk.Label(
+            top_row,
             text=f"📱 {phone['phone_number']}",
             font=(self.font[0], self.font[1], 'bold'),
             bg='#f8f9fa',
             fg='#2c3e50'
+        ).pack(anchor='w')
+
+        # Middle row: Notes (editable)
+        notes_row = tk.Frame(info_container, bg='#f8f9fa')
+        notes_row.pack(fill=tk.X, pady=(0, 3))
+
+        tk.Label(
+            notes_row,
+            text="📝 ملاحظات:",
+            font=(self.font[0], self.font[1]-1),
+            bg='#f8f9fa',
+            fg='#6c757d'
+        ).pack(side=tk.RIGHT)
+
+        notes_var = tk.StringVar(value=phone.get('notes', ''))
+        notes_entry = tk.Entry(
+            notes_row,
+            textvariable=notes_var,
+            font=(self.font[0], self.font[1]-1),
+            bg='white',
+            fg='#495057',
+            bd=1,
+            relief=tk.GROOVE,
+            width=20
         )
-        phone_label.pack(anchor='w')
+        notes_entry.pack(side=tk.RIGHT, padx=(0, 5), fill=tk.X, expand=True)
 
-        # Notes display
-        if phone.get('notes'):
-            notes_label = tk.Label(
-                info_frame,
-                text=f"📝 {phone['notes']}",
-                font=(self.font[0], self.font[1]-1),
-                bg='#f8f9fa',
-                fg='#6c757d'
-            )
-            notes_label.pack(anchor='w')
+        # Save notes button
+        save_notes_btn = tk.Button(
+            notes_row,
+            text="💾",
+            command=lambda p_id=phone['id'], var=notes_var: self.save_phone_notes(p_id, var.get()),
+            font=(self.font[0], self.font[1]-2),
+            bg='#28a745',
+            fg='white',
+            bd=0,
+            padx=5,
+            pady=2,
+            cursor='hand2'
+        )
+        save_notes_btn.pack(side=tk.LEFT)
 
-        # Wallet status with toggle
-        wallet_frame = tk.Frame(info_frame, bg='#f8f9fa')
-        wallet_frame.pack(anchor='w', pady=(5, 0))
+        # Bottom row: Wallet and delete button
+        bottom_row = tk.Frame(info_container, bg='#f8f9fa')
+        bottom_row.pack(fill=tk.X)
 
+        # Wallet checkbox
         wallet_var = tk.BooleanVar(value=phone['has_wallet'])
         wallet_check = tk.Checkbutton(
-            wallet_frame,
-            text="💰 محفظة",
+            bottom_row,
+            text="💰",
             variable=wallet_var,
             font=(self.font[0], self.font[1]-1),
             bg='#f8f9fa',
@@ -2003,27 +2045,41 @@ class PhoneManagementDialog:
 
         # Delete button
         delete_btn = tk.Button(
-            item_frame,
-            text="🗑️ حذف",
+            bottom_row,
+            text="🗑️",
             command=lambda p_id=phone['id']: self.delete_phone(p_id),
-            font=(self.font[0], self.font[1]-1, 'bold'),
+            font=(self.font[0], self.font[1]-2),
             bg='#dc3545',
             fg='white',
             bd=0,
-            padx=15,
-            pady=8,
+            padx=5,
+            pady=2,
             cursor='hand2'
         )
-        delete_btn.pack(side=tk.RIGHT, padx=15, pady=10)
+        delete_btn.pack(side=tk.RIGHT)
+
+    def create_phone_item(self, parent, phone, carrier_color):
+        """Create phone number item - legacy method for compatibility"""
+        item_frame = tk.Frame(parent, bg='#f8f9fa', relief=tk.RAISED, bd=1)
+        item_frame.pack(fill=tk.X, padx=10, pady=2)
+        self.create_phone_item_horizontal(item_frame, phone, carrier_color)
 
     def toggle_wallet(self, phone_id, wallet_var):
         """Toggle wallet status for phone"""
         try:
-            self.customer_manager.update_phone_wallet_status(phone_id, wallet_var.get())
+            self.customer_manager.update_phone_number_wallet_status(phone_id, wallet_var.get())
         except Exception as e:
             messagebox.showerror("خطأ", f"فشل في تحديث حالة المحفظة: {str(e)}")
             # Revert the checkbox
             wallet_var.set(not wallet_var.get())
+
+    def save_phone_notes(self, phone_id, notes):
+        """Save phone notes"""
+        try:
+            self.customer_manager.update_phone_notes(phone_id, notes.strip())
+            messagebox.showinfo("نجح", "تم حفظ الملاحظات بنجاح")
+        except Exception as e:
+            messagebox.showerror("خطأ", f"فشل في حفظ الملاحظات: {str(e)}")
 
     def delete_phone(self, phone_id):
         """Delete phone number"""
@@ -2075,7 +2131,7 @@ class PhoneManagementDialog:
         # Similar to the one in ModernCustomerDialog
         manual_dialog = tk.Toplevel(self.dialog)
         manual_dialog.title("إضافة رقم يدوياً")
-        manual_dialog.geometry("400x300")
+        manual_dialog.geometry("400x350")
         manual_dialog.configure(bg='white')
         manual_dialog.grab_set()
         manual_dialog.transient(self.dialog)
@@ -2120,7 +2176,7 @@ class PhoneManagementDialog:
         wallet_check.pack(anchor='w', pady=15)
 
         # Notes field
-        tk.Label(form_frame, text="ملاحظات:", font=self.font, bg='white').pack(anchor='w')
+        tk.Label(form_frame, text="ملاحظات الرقم:", font=self.font, bg='white').pack(anchor='w')
         notes_var = tk.StringVar()
         notes_entry = tk.Entry(form_frame, textvariable=notes_var, font=self.font, width=30)
         notes_entry.pack(fill=tk.X, pady=(5, 15))
@@ -2137,10 +2193,6 @@ class PhoneManagementDialog:
 
             if not phone:
                 messagebox.showerror("خطأ", "يرجى إدخال رقم الهاتف")
-                return
-
-            if not self.ocr_processor.validate_egyptian_phone(phone):
-                messagebox.showerror("خطأ", "رقم الهاتف غير صحيح")
                 return
 
             try:
@@ -2259,10 +2311,10 @@ class CustomerDetailsDialog:
 
         # Center dialog
         self.center_dialog(parent)
-        
+
         # Setup UI
         self.setup_ui()
-        
+
         # Load customer data
         self.load_customer_details()
 
@@ -2405,35 +2457,33 @@ class CustomerDetailsDialog:
         button_frame = tk.Frame(parent, bg='white')
         button_frame.pack(fill=tk.X, pady=20)
 
-        # Edit button
-        if self.edit_callback:
-            tk.Button(
-                button_frame,
-                text="✏️ تعديل العميل",
-                command=self.edit_customer,
-                font=(self.font[0], self.font[1], 'bold'),
-                bg='#007bff',
-                fg='white',
-                bd=0,
-                padx=30,
-                pady=12,
-                cursor='hand2'
-            ).pack(side=tk.LEFT, padx=10)
+        # Edit button - always show
+        tk.Button(
+            button_frame,
+            text="✏️ تعديل العميل",
+            command=self.edit_customer,
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='#007bff',
+            fg='white',
+            bd=0,
+            padx=30,
+            pady=12,
+            cursor='hand2'
+        ).pack(side=tk.LEFT, padx=10)
 
-        # Delete button
-        if self.delete_callback:
-            tk.Button(
-                button_frame,
-                text="🗑️ حذف العميل",
-                command=self.delete_customer,
-                font=(self.font[0], self.font[1], 'bold'),
-                bg='#dc3545',
-                fg='white',
-                bd=0,
-                padx=30,
-                pady=12,
-                cursor='hand2'
-            ).pack(side=tk.LEFT, padx=10)
+        # Delete button - always show
+        tk.Button(
+            button_frame,
+            text="🗑️ حذف العميل",
+            command=self.delete_customer,
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='#dc3545',
+            fg='white',
+            bd=0,
+            padx=30,
+            pady=12,
+            cursor='hand2'
+        ).pack(side=tk.LEFT, padx=10)
 
         # Close button
         tk.Button(
@@ -2526,7 +2576,7 @@ class CustomerDetailsDialog:
         scrollbar.pack(side="right", fill="y", padx=(0, 15), pady=15)
 
     def create_carrier_section_details(self, parent, carrier, phones, color):
-        """Create detailed carrier section"""
+        """Create detailed carrier section with horizontal layout"""
         # Carrier header
         carrier_frame = tk.Frame(parent, bg=color, height=40)
         carrier_frame.pack(fill=tk.X, padx=10, pady=(10, 0))
@@ -2542,96 +2592,389 @@ class CustomerDetailsDialog:
         )
         carrier_label.pack()
 
-        # Phone numbers
-        for phone in phones:
-            self.create_phone_item_details(parent, phone, color)
+        # Container for phone numbers in horizontal layout
+        phones_container = tk.Frame(parent, bg='white')
+        phones_container.pack(fill=tk.X, padx=10, pady=(0, 10))
 
-    def create_phone_item_details(self, parent, phone, carrier_color):
-        """Create detailed phone item"""
-        item_frame = tk.Frame(parent, bg='#f8f9fa', relief=tk.RAISED, bd=1)
-        item_frame.pack(fill=tk.X, padx=10, pady=2)
+        # Split phones into rows (2 phones per row)
+        phones_per_row = 2
+        for i in range(0, len(phones), phones_per_row):
+            row_frame = tk.Frame(phones_container, bg='white')
+            row_frame.pack(fill=tk.X, pady=2)
 
+            # Add phones to this row
+            row_phones = phones[i:i + phones_per_row]
+            for j, phone in enumerate(row_phones):
+                phone_frame = tk.Frame(row_frame, bg='#f8f9fa', relief=tk.RAISED, bd=1)
+                phone_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5 if j < len(row_phones)-1 else 0))
+                self.create_phone_item_details_horizontal(phone_frame, phone, color)
+
+    def create_phone_item_details_horizontal(self, parent, phone, carrier_color):
+        """Create detailed phone item in horizontal layout"""
         # Phone info container
-        info_container = tk.Frame(item_frame, bg='#f8f9fa')
-        info_container.pack(fill=tk.X, padx=15, pady=10)
+        info_container = tk.Frame(parent, bg='#f8f9fa')
+        info_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        # Top row: Phone number and wallet
+        top_row = tk.Frame(info_container, bg='#f8f9fa')
+        top_row.pack(fill=tk.X, pady=(0, 5))
 
         # Phone number
-        phone_frame = tk.Frame(info_container, bg='#f8f9fa')
-        phone_frame.pack(fill=tk.X, pady=2)
-
         tk.Label(
-            phone_frame,
-            text="📞 الرقم:",
+            top_row,
+            text=f"📞 {phone['phone_number']}",
             font=(self.font[0], self.font[1], 'bold'),
             bg='#f8f9fa',
             fg='#2c3e50'
-        ).pack(side=tk.RIGHT, padx=(10, 0))
-
-        tk.Label(
-            phone_frame,
-            text=phone['phone_number'],
-            font=self.font,
-            bg='#f8f9fa',
-            fg='#495057'
-        ).pack(side=tk.RIGHT, padx=(0, 10))
+        ).pack(side=tk.RIGHT)
 
         # Wallet status
-        wallet_frame = tk.Frame(info_container, bg='#f8f9fa')
-        wallet_frame.pack(fill=tk.X, pady=2)
+        wallet_var = tk.BooleanVar(value=phone['has_wallet'])
+        wallet_check = tk.Checkbutton(
+            top_row,
+            text="💰",
+            variable=wallet_var,
+            font=self.font,
+            bg='#f8f9fa',
+            command=lambda p_id=phone['id'], var=wallet_var: self.toggle_wallet(p_id, var)
+        )
+        wallet_check.pack(side=tk.LEFT)
+
+        # Middle row: Notes
+        notes_row = tk.Frame(info_container, bg='#f8f9fa')
+        notes_row.pack(fill=tk.X, pady=(0, 5))
+
+        notes_text = phone.get('notes', '')
+        notes_var = tk.StringVar(value=notes_text)
+        notes_entry = tk.Entry(
+            notes_row,
+            textvariable=notes_var,
+            font=(self.font[0], self.font[1]-1),
+            bg='white',
+            fg='#495057',
+            bd=1,
+            relief=tk.GROOVE
+        )
+        notes_entry.pack(fill=tk.X, padx=(0, 40))
+
+        # Bottom row: Action buttons
+        action_row = tk.Frame(info_container, bg='#f8f9fa')
+        action_row.pack(fill=tk.X)
+
+        # Save notes button
+        save_notes_btn = tk.Button(
+            action_row,
+            text="💾",
+            command=lambda p_id=phone['id'], var=notes_var: self.save_phone_notes(p_id, var.get()),
+            font=(self.font[0], self.font[1]-2),
+            bg='#28a745',
+            fg='white',
+            bd=0,
+            padx=5,
+            pady=2,
+            cursor='hand2'
+        )
+        save_notes_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+        # Delete button
+        delete_btn = tk.Button(
+            action_row,
+            text="🗑️",
+            command=lambda p_id=phone['id']: self.delete_phone_from_details(p_id),
+            font=(self.font[0], self.font[1]-2),
+            bg='#dc3545',
+            fg='white',
+            bd=0,
+            padx=5,
+            pady=2,
+            cursor='hand2'
+        )
+        delete_btn.pack(side=tk.LEFT)
+
+    def create_phone_item_details(self, parent, phone, carrier_color):
+        """Create detailed phone item - legacy method for compatibility"""
+        item_frame = tk.Frame(parent, bg='#f8f9fa', relief=tk.RAISED, bd=1)
+        item_frame.pack(fill=tk.X, padx=10, pady=2)
+        self.create_phone_item_details_horizontal(item_frame, phone, carrier_color)
+
+    def edit_customer(self):
+        """Edit customer directly"""
+        try:
+            from tkinter import messagebox
+
+            # Close details dialog
+            self.dialog.destroy()
+
+            # Open phone management dialog for editing
+            dialog = PhoneManagementDialog(
+                self.dialog.master,
+                self.customer,
+                self.customer_manager,
+                self.font
+            )
+            self.dialog.master.wait_window(dialog.dialog)
+
+            # Refresh main application if callback provided
+            if self.edit_callback:
+                self.edit_callback()
+
+        except Exception as e:
+            messagebox.showerror("خطأ", f"فشل في فتح نافذة التعديل: {str(e)}")
+
+    def delete_customer(self):
+        """Delete customer directly"""
+        from tkinter import messagebox
+
+        # Confirm deletion
+        if messagebox.askyesno(
+            "تأكيد الحذف", 
+            f"هل أنت متأكد من حذف العميل {self.customer['name']}؟\n\nسيتم حذف جميع أرقام الهاتف المرتبطة بهذا العميل.",
+            icon='warning'
+        ):
+            try:
+                # Delete customer
+                self.customer_manager.delete_customer(self.customer['national_id'])
+
+                # Close details dialog
+                self.dialog.destroy()
+
+                # Show success message
+                messagebox.showinfo("نجح", "تم حذف العميل بنجاح")
+
+                # Refresh main application if callback provided
+                if self.delete_callback:
+                    self.delete_callback()
+
+            except Exception as e:
+                messagebox.showerror("خطأ", f"فشل في حذف العميل: {str(e)}")
+
+    def toggle_wallet(self, phone_id, wallet_var):
+        """Toggle wallet status for phone"""
+        try:
+            self.customer_manager.update_phone_number_wallet_status(phone_id, wallet_var.get())
+            messagebox.showinfo("نجح", "تم تحديث حالة المحفظة بنجاح")
+        except Exception as e:
+            messagebox.showerror("خطأ", f"فشل في تحديث حالة المحفظة: {str(e)}")
+            # Revert the checkbox
+            wallet_var.set(not wallet_var.get())
+
+    def save_phone_notes(self, phone_id, notes):
+        """Save phone notes"""
+        try:
+            self.customer_manager.update_phone_notes(phone_id, notes.strip())
+            messagebox.showinfo("نجح", "تم حفظ الملاحظات بنجاح")
+            # Refresh display
+            self.load_customer_details()
+        except Exception as e:
+            messagebox.showerror("خطأ", f"فشل في حفظ الملاحظات: {str(e)}")
+
+    def delete_phone_from_details(self, phone_id):
+        """Delete phone number from details view"""
+        if messagebox.askyesno("تأكيد الحذف", "هل أنت متأكد من حذف هذا الرقم؟"):
+            try:
+                self.customer_manager.delete_phone_number(phone_id)
+                messagebox.showinfo("نجح", "تم حذف الرقم بنجاح")
+                # Refresh display
+                self.load_customer_details()
+                # Refresh main application if callback provided
+                if self.edit_callback:
+                    self.edit_callback()
+            except Exception as e:
+                messagebox.showerror("خطأ", f"فشل في حذف الرقم: {str(e)}")
+
+class AllCustomersViewDialog:
+    """نافذة عرض جميع العملاء في شاشة كبيرة"""
+    def __init__(self, parent, customer_manager, font):
+        self.customer_manager = customer_manager
+        self.font = font
+        self.customers = []
+        self.filtered_customers = []
+
+        # Create dialog
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("عرض جميع العملاء")
+        self.dialog.state("zoomed")
+        self.dialog.resizable(True, True)
+        self.dialog.configure(bg='white')
+        self.dialog.grab_set()
+        self.dialog.transient(parent)
+
+        # Setup UI
+        self.setup_ui()
+        self.load_all_customers()
+
+    def setup_ui(self):
+        """Setup user interface"""
+        # Header
+        header_frame = tk.Frame(self.dialog, bg='#4F81BD', height=80)
+        header_frame.pack(fill=tk.X, pady=(0, 20))
+        header_frame.pack_propagate(False)
+
+        header_label = tk.Label(
+            header_frame,
+            text="📋 عرض جميع العملاء",
+            font=(self.font[0], self.font[1]+4, 'bold'),
+            bg='#4F81BD',
+            fg='white',
+            pady=25
+        )
+        header_label.pack()
+
+        # Search section
+        search_frame = tk.Frame(self.dialog, bg='white')
+        search_frame.pack(fill=tk.X, padx=20, pady=10)
 
         tk.Label(
-            wallet_frame,
-            text="💰 المحفظة:",
+            search_frame,
+            text="🔍 البحث:",
             font=(self.font[0], self.font[1], 'bold'),
-            bg='#f8f9fa',
+            bg='white',
             fg='#2c3e50'
         ).pack(side=tk.RIGHT, padx=(10, 0))
 
-        wallet_status = "نعم ✅" if phone['has_wallet'] else "لا ❌"
-        tk.Label(
-            wallet_frame,
-            text=wallet_status,
+        self.search_var = tk.StringVar()
+        self.search_entry = tk.Entry(
+            search_frame,
+            textvariable=self.search_var,
             font=self.font,
-            bg='#f8f9fa',
-            fg='#28a745' if phone['has_wallet'] else '#dc3545'
-        ).pack(side=tk.RIGHT, padx=(0, 10))
+            width=30,
+            bd=2,
+            relief=tk.GROOVE
+        )
+        self.search_entry.pack(side=tk.RIGHT, padx=(0, 10))
+        self.search_entry.bind('<KeyRelease>', self.perform_search)
 
-        # Notes if available
-        if phone.get('notes'):
-            notes_frame = tk.Frame(info_container, bg='#f8f9fa')
-            notes_frame.pack(fill=tk.X, pady=2)
+        # Results count
+        self.results_label = tk.Label(
+            search_frame,
+            text="",
+            font=self.font,
+            bg='white',
+            fg='#6c757d'
+        )
+        self.results_label.pack(side=tk.LEFT)
 
-            tk.Label(
-                notes_frame,
-                text="📝 ملاحظات:",
-                font=(self.font[0], self.font[1], 'bold'),
-                bg='#f8f9fa',
-                fg='#2c3e50'
-            ).pack(anchor='e', padx=(10, 0))
+        # Table frame
+        table_frame = tk.Frame(self.dialog, bg='white')
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
-            tk.Label(
-                notes_frame,
-                text=phone['notes'],
-                font=(self.font[0], self.font[1]-1),
-                bg='#f8f9fa',
-                fg='#6c757d',
-                wraplength=400,
-                justify='right'
-            ).pack(anchor='e', padx=(0, 10))
+        # Treeview for customers
+        columns = ('الرقم القومي', 'اسم العميل', 'الملاحظات', 'أرقام الهواتف', 'أرقام بمحفظة')
+        self.tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=15)
 
-    def edit_customer(self):
-        """Edit customer via callback"""
-        if self.edit_callback:
-            self.dialog.destroy()
-            self.edit_callback()
+        # Configure columns
+        self.tree.heading('الرقم القومي', text='الرقم القومي')
+        self.tree.heading('اسم العميل', text='اسم العميل')
+        self.tree.heading('الملاحظات', text='الملاحظات')
+        self.tree.heading('أرقام الهواتف', text='أرقام الهواتف')
+        self.tree.heading('أرقام بمحفظة', text='أرقام بمحفظة')
 
-    def delete_customer(self):
-        """Delete customer via callback"""
-        if self.delete_callback:
-            self.dialog.destroy()
-            self.delete_callback()
+        self.tree.column('الرقم القومي', width=150, anchor='center')
+        self.tree.column('اسم العميل', width=200, anchor='center')
+        self.tree.column('الملاحظات', width=300, anchor='center')
+        self.tree.column('أرقام الهواتف', width=100, anchor='center')
+        self.tree.column('أرقام بمحفظة', width=100, anchor='center')
+
+        # Scrollbars
+        v_scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        h_scrollbar = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
+
+        # Pack table and scrollbars
+        self.tree.pack(side="left", fill="both", expand=True)
+        v_scrollbar.pack(side="right", fill="y")
+        h_scrollbar.pack(side="bottom", fill="x")
+
+        # Buttons
+        button_frame = tk.Frame(self.dialog, bg='white')
+        button_frame.pack(fill=tk.X, pady=20)
+
+        tk.Button(
+            button_frame,
+            text="❌ إغلاق",
+            command=self.dialog.destroy,
+            font=(self.font[0], self.font[1], 'bold'),
+            bg='#dc3545',
+            fg='white',
+            bd=0,
+            padx=30,
+            pady=12,
+            cursor='hand2'
+        ).pack(side=tk.RIGHT, padx=20)
+
+    def load_all_customers(self):
+        """Load all customers with their phone numbers"""
+        try:
+            self.customers = self.customer_manager.get_all_customers_with_phones()
+            self.filtered_customers = self.customers.copy()
+            self.display_customers()
+        except Exception as e:
+            messagebox.showerror("خطأ", f"فشل في تحميل العملاء: {str(e)}")
+
+    def display_customers(self):
+        """Display customers in the table"""
+        # Clear existing items
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Add customers
+        for customer in self.filtered_customers:
+            # Count phone numbers
+            total_phones = 0
+            wallet_phones = 0
+
+            for carrier in ['اورانج', 'فودافون', 'اتصالات', 'وي']:
+                carrier_phones = customer['carriers'].get(carrier, [])
+                total_phones += len(carrier_phones)
+                wallet_phones += sum(1 for p in carrier_phones if p['has_wallet'])
+
+            notes = customer.get('notes', '')
+            if len(notes) > 50:
+                notes = notes[:50] + "..."
+
+            self.tree.insert('', 'end', values=(
+                customer['national_id'],
+                customer['name'],
+                notes,
+                total_phones,
+                wallet_phones
+            ))
+
+        # Update results count
+        self.results_label.config(text=f"عدد العملاء: {len(self.filtered_customers)}")
+
+    def perform_search(self, event=None):
+        """Perform search in customers"""
+        search_term = self.search_var.get().strip()
+
+        if not search_term:
+            self.filtered_customers = self.customers.copy()
+        else:
+            self.filtered_customers = []
+            search_term_lower = search_term.lower()
+
+            for customer in self.customers:
+                # Search in name, national_id, notes
+                if (search_term_lower in customer['name'].lower() or
+                    search_term in customer['national_id'] or
+                    search_term_lower in customer.get('notes', '').lower()):
+                    self.filtered_customers.append(customer)
+                    continue
+
+                # Search in phone numbers
+                found_in_phones = False
+                for carrier in ['اورانج', 'فودافون', 'اتصالات', 'وي']:
+                    for phone in customer['carriers'].get(carrier, []):
+                        if search_term in phone['phone_number']:
+                            self.filtered_customers.append(customer)
+                            found_in_phones = True
+                            break
+                    if found_in_phones:
+                        break
+
+        self.display_customers()
 
 # Legacy compatibility classes
 class EnhancedOCRDialog(SmartOCRDialog):
     """Legacy compatibility"""
-    pass
+    pass    

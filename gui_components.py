@@ -366,7 +366,7 @@ class CustomerTableGUI:
             self.make_row_clickable(row_frame, customer)
     
     def create_carrier_cell(self, parent, row_index, phones, bg_color, text_color, column, carrier_name):
-        """Create a carrier cell with phone number and checkbox"""
+        """Create a carrier cell with phone number, notes and checkbox"""
         if row_index < len(phones):
             # Phone exists for this row
             phone_data = phones[row_index]
@@ -379,29 +379,58 @@ class CustomerTableGUI:
             phone_label = tk.Label(
                 cell_frame,
                 text=phone_data['phone_number'],
-                font=self.font,
+                font=(self.font[0], self.font[1], 'bold'),
                 bg=bg_color,
                 fg=text_color,
                 anchor='center'
             )
-            phone_label.pack(pady=(5, 2))
+            phone_label.pack(pady=(2, 0))
+            
+            # Always show notes area (even if empty) to maintain consistent layout
+            notes_text = ""
+            if phone_data.get('notes') and phone_data['notes'].strip():
+                notes_text = phone_data['notes']
+                # Truncate long notes
+                if len(notes_text) > 12:
+                    notes_text = notes_text[:12] + '...'
+                notes_text = f"📝 {notes_text}"
+            
+            notes_label = tk.Label(
+                cell_frame,
+                text=notes_text,
+                font=(self.font[0], self.font[1]-3),
+                bg=bg_color,
+                fg=text_color,
+                anchor='center',
+                wraplength=120,
+                height=1
+            )
+            notes_label.pack(pady=(1, 1))
             
             # Wallet checkbox
             wallet_var = tk.BooleanVar(value=phone_data['has_wallet'])
             wallet_check = tk.Checkbutton(
                 cell_frame,
-                text="محفظة",
+                text="💰",
                 variable=wallet_var,
                 bg=bg_color,
                 fg=text_color,
                 selectcolor=bg_color,
-                font=(self.font[0], self.font[1]-1),
+                font=(self.font[0], self.font[1]-2),
                 activebackground=bg_color,
                 activeforeground=text_color,
                 command=lambda pId=phone_data['phone_id'], var=wallet_var: 
                     self.on_wallet_change(pId, var.get())
             )
-            wallet_check.pack(pady=(0, 5))
+            wallet_check.pack(pady=(0, 2))
+            
+            # Store reference to original colors for selection handling
+            setattr(cell_frame, 'original_bg', bg_color)
+            setattr(phone_label, 'original_bg', bg_color)
+            setattr(phone_label, 'original_fg', text_color)
+            setattr(notes_label, 'original_bg', bg_color)
+            setattr(notes_label, 'original_fg', text_color)
+            setattr(wallet_check, 'original_bg', bg_color)
             
         else:
             # Empty cell with carrier background color
@@ -414,6 +443,9 @@ class CustomerTableGUI:
                 height=3
             )
             empty_cell.grid(row=0, column=column, sticky='nsew', padx=1, pady=1)
+            
+            # Store reference to original color
+            setattr(empty_cell, 'original_bg', bg_color)
     
     def make_row_clickable(self, row_frame, customer):
         """Make a row clickable for selection"""
@@ -451,28 +483,64 @@ class CustomerTableGUI:
                 # إعادة تعيين لون الصف السابق
                 customer_index = getattr(self.selected_row_frame, 'customer_index', 0)
                 original_bg = self.colors['white_row'] if customer_index % 2 == 0 else self.colors['alt_row']
-                self.highlight_row_recursive(self.selected_row_frame, original_bg)
+                self.restore_original_colors(self.selected_row_frame, original_bg)
             except:
                 pass
+    
+    def restore_original_colors(self, widget, default_bg):
+        """Restore original colors for widget and its children"""
+        try:
+            # قائمة ألوان الشبكات
+            carrier_colors = [self.colors['orange_bg'], self.colors['vodafone_bg'], 
+                            self.colors['etisalat_bg'], self.colors['we_bg'], 
+                            self.colors['header_bg']]
+            
+            # استعادة اللون الأصلي للعنصر
+            if hasattr(widget, 'configure') and 'bg' in widget.keys():
+                if hasattr(widget, 'original_bg'):
+                    # استعادة اللون الأصلي المحفوظ
+                    widget.configure(bg=widget.original_bg)
+                    # استعادة لون النص الأصلي أيضاً إذا كان محفوظاً
+                    if hasattr(widget, 'original_fg') and 'fg' in widget.keys():
+                        widget.configure(fg=widget.original_fg)
+                else:
+                    current_bg = widget.cget('bg')
+                    # إعادة تعيين اللون الافتراضي فقط إذا لم يكن من ألوان الشبكات
+                    if current_bg not in carrier_colors:
+                        widget.configure(bg=default_bg)
+            
+            # تطبيق الاستعادة على العناصر الفرعية
+            for child in widget.winfo_children():
+                self.restore_original_colors(child, default_bg)
+        except:
+            pass
     
     def highlight_row_recursive(self, widget, color):
         """Recursively highlight a row and its children"""
         try:
+            # قائمة ألوان الشبكات التي لا يجب تغييرها
+            carrier_colors = [self.colors['orange_bg'], self.colors['vodafone_bg'], 
+                            self.colors['etisalat_bg'], self.colors['we_bg'], 
+                            self.colors['header_bg']]
+            
             # تغيير لون الخلفية للعنصر نفسه إذا كان يدعم ذلك
             if hasattr(widget, 'configure') and 'bg' in widget.keys():
-                widget.configure(bg=color)
+                current_bg = widget.cget('bg')
+                
+                # فحص إذا كان العنصر يحتوي على لون أصلي محفوظ
+                if hasattr(widget, 'original_bg'):
+                    # لا تغير لون خلايا الشبكات
+                    if widget.original_bg in carrier_colors:
+                        pass  # احتفظ باللون الأصلي للشبكة
+                    else:
+                        widget.configure(bg=color)
+                else:
+                    # تغيير اللون فقط إذا لم يكن من ألوان الشبكات
+                    if current_bg not in carrier_colors:
+                        widget.configure(bg=color)
             
             # تطبيق التمييز على العناصر الفرعية
             for child in widget.winfo_children():
-                if hasattr(child, 'configure') and 'bg' in child.keys():
-                    # تجنب تغيير ألوان خلايا الشبكات المميزة
-                    current_bg = child.cget('bg')
-                    if current_bg not in [self.colors['orange_bg'], self.colors['vodafone_bg'], 
-                                        self.colors['etisalat_bg'], self.colors['we_bg'], 
-                                        self.colors['header_bg']]:
-                        child.configure(bg=color)
-                
-                # استمرار التمييز للعناصر الفرعية
                 self.highlight_row_recursive(child, color)
         except:
             pass
@@ -485,7 +553,7 @@ class CustomerTableGUI:
         """Handle wallet status change"""
         try:
             # Update wallet status in database
-            self.customer_manager.update_phone_wallet_status(phone_id, has_wallet)
+            self.customer_manager.update_phone_number_wallet_status(phone_id, has_wallet)
         except Exception as e:
             print(f"Error updating wallet status: {e}")
     
